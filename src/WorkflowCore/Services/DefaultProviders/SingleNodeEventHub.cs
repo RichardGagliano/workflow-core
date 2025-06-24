@@ -9,30 +9,28 @@ namespace WorkflowCore.Services
 {
     public class SingleNodeEventHub : ILifeCycleEventHub
     {
+        private readonly ILogger<SingleNodeEventHub> _logger;
         private ICollection<Action<LifeCycleEvent>> _subscribers = new HashSet<Action<LifeCycleEvent>>();
-        private readonly ILogger _logger;
 
-        public SingleNodeEventHub(ILoggerFactory loggerFactory)
+        public SingleNodeEventHub(ILoggerFactory factory)
         {
-            _logger = loggerFactory.CreateLogger<SingleNodeEventHub>();
+            _logger = factory.CreateLogger<SingleNodeEventHub>();
         }
 
         public Task PublishNotification(LifeCycleEvent evt)
         {
-            Task.Run(() =>
+            foreach (var subscriber in _subscribers)
             {
-                foreach (var subscriber in _subscribers)
+                try
                 {
-                    try
-                    {
-                        subscriber(evt);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(default(EventId), ex, $"Error on event subscriber: {ex.Message}");
-                    }
+                    subscriber(evt);
                 }
-            });
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error on event subscriber");
+                }
+            }
+
             return Task.CompletedTask;
         }
 
